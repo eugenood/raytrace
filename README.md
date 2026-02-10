@@ -27,7 +27,10 @@ macOS requires `libomp` for parallel execution.
 
 2.  **Compile:**
     ```bash
-    make
+    mkdir build
+    cd build
+    cmake ..
+    cmake --build .
     ```
 
 3.  **Run:**

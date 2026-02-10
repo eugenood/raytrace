@@ -1,2 +1,4 @@
 main.dSYM
-raytrace
+build/
+.cache/
+compile_commands.json
