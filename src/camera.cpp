@@ -8,6 +8,8 @@
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <thread>
+#include <vector>
 
 Camera::Camera(const Point3D& cameraOrigin, const Point3D& lookAt, double verticalFov, double defocusAngle, double focusDistance)
     : m_cameraOrigin{cameraOrigin}
@@ -43,29 +45,48 @@ Image Camera::render(const World& world, int imageWidth, int imageHeight, int sa
 
     Image image{imageWidth, imageHeight};
     std::atomic<int> linesFinished{0};
+    std::atomic<int> nextRow{0};
 
-    #pragma omp parallel for schedule(dynamic, 1)
-    for (int y = 0; y < imageHeight; ++y)
+    auto renderWorker = [&]()
     {
-        for (int x{0}; x < imageWidth; ++x)
+        while (true)
         {
-            Color color{};
+            int y{nextRow.fetch_add(1)};
+            if (y >= imageHeight)
+                break;
 
-            for (int i{0}; i < samplesPerPixel; ++i)
+            for (int x{0}; x < imageWidth; ++x)
             {
-                Vector3D offset{Random::sampleSquare()};
-                Vector3D rayOrigin = (m_defocusAngle <= 0) ? m_cameraOrigin : sampleDefocusDisk(defocusDiskU, defocusDiskV);
-                Vector3D rayDirection{pixelFirstOrigin + (pixelDeltaU * (x + offset.x)) + (pixelDeltaV * (y + offset.y)) - rayOrigin};
-                Ray ray{rayOrigin, rayDirection};
-                color += getRayColor(ray, world, maxBounce);
+                Color color{};
+
+                for (int i{0}; i < samplesPerPixel; ++i)
+                {
+                    Vector3D offset{Random::sampleSquare()};
+                    Vector3D rayOrigin = (m_defocusAngle <= 0) ? m_cameraOrigin : sampleDefocusDisk(defocusDiskU, defocusDiskV);
+                    Vector3D rayDirection{pixelFirstOrigin + (pixelDeltaU * (x + offset.x)) + (pixelDeltaV * (y + offset.y)) - rayOrigin};
+                    Ray ray{rayOrigin, rayDirection};
+                    color += getRayColor(ray, world, maxBounce);
+                }
+
+                image(x, y) = color / samplesPerPixel;
             }
 
-            image(x, y) = color / samplesPerPixel;
+            ++linesFinished;
+            if (linesFinished % 10 == 0)
+                std::clog << "\rScanlines remaining: " << (imageHeight - linesFinished) << "   " << std::flush;
         }
+    };
 
-        ++linesFinished;
-        std::clog << "\rScanlines remaining: " << (imageHeight - linesFinished) << "   " << std::flush;
-    }
+    int numThreads{static_cast<int>(std::thread::hardware_concurrency())};
+    if (numThreads == 0) 
+        numThreads = 4;
+
+    std::vector<std::thread> threads{};
+    for (int i{0}; i < numThreads; ++i)
+        threads.emplace_back(renderWorker);
+
+    for (auto& thread : threads)
+        thread.join();
 
     std::clog << "\n";
     return image;
