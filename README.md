@@ -11,21 +11,13 @@ This project was built as an educational exercise to practice **modern C++ softw
 * **Redesigned Class Architecture:** Restructured the original class hierarchy to minimize mutable state and member variables.
 * **Modern C++ Features:** Utilizes `std::shared_ptr` for automatic resource management and `std::optional` to explicitly handle intersection logic
 * **Self-Contained Bitmap Writer:** Contains a custom implementation of the BMP Version 2 file format (`image.cpp`).
-* **Parallel Execution:** Implements rendering loop using **OpenMP** to distribute the ray casting workload across available CPU cores.
+* **Parallel Execution:** Implements rendering loop using `std::thread` to distribute the workload across available CPU cores.
 
 ## Build Instructions
 
-The project requires a C++ compiler with **C++20** support and an **OpenMP** runtime.
+The project requires a C++ compiler with **C++20** support.
 
-### macOS (Clang)
-macOS requires `libomp` for parallel execution.
-
-1.  **Install dependencies:**
-    ```bash
-    brew install libomp
-    ```
-
-2.  **Compile:**
+1.  **Compile:**
     ```bash
     mkdir build
     cd build
@@ -33,7 +25,7 @@ macOS requires `libomp` for parallel execution.
     cmake --build .
     ```
 
-3.  **Run:**
+2.  **Run:**
     ```bash
     ./raytrace
     ```
